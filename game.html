@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>宇宙お掃除 - タイピングゲーム (日本語)</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, "メイリオ", Meiryo, "ＭＳ Ｐゴシック", "MS PGothic", sans-serif;
+            background-color: #0d1a2b; /* 暗い宇宙の背景 */
+            color: #e0f2f7;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        #game-container {
+            width: 90vw;
+            height: 90vh;
+            max-width: 1200px;
+            max-height: 800px;
+            background: radial-gradient(circle at 50% 50%, #1a3a5a 0%, #0d1a2b 100%);
+            border-radius: 20px;
+            box-shadow: 0 0 50px rgba(0, 255, 255, 0.5), inset 0 0 20px rgba(0, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* 星の背景アニメーション */
+        .star {
+            position: absolute;
+            background-color: #fff;
+            border-radius: 50%;
+            opacity: 0;
+            animation: twinkle linear infinite;
+        }
+
+        @keyframes twinkle {
+            0% { opacity: 0; }
+            50% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        /* UI要素 */
+        #score-board, #life-board {
+            position: absolute;
+            top: 20px;
+            padding: 10px 20px;
+            background-color: rgba(0, 50, 100, 0.7);
+            border-radius: 10px;
+            font-size: 1.5em;
+            color: #0ff;
+            text-shadow: 0 0 10px #0ff;
+            border: 2px solid #0ff;
+            z-index: 100;
+        }
+
+        #score-board { left: 20px; }
+        #life-board { right: 20px; }
+
+        #word-container {
+            position: relative;
+            width: 100%;
+            height: calc(100% - 150px);
+            margin-top: 80px;
+        }
+
+        .word {
+            position: absolute;
+            font-size: 2.2em;
+            color: #a0e6ff;
+            text-shadow: 0 0 15px rgba(160, 230, 255, 0.8);
+            white-space: nowrap;
+            animation: fall linear forwards;
+            pointer-events: none;
+            z-index: 50;
+        }
+        
+        /* タイプ済みの文字のスタイル */
+        .typed-char {
+            color: #ffcc00; /* タイプ済みの文字を黄色で強調 */
+            font-weight: bold;
+        }
+
+        .word.hit {
+            animation: fadeOutAndShrink 0.3s forwards;
+        }
+
+        @keyframes fall {
+            from { top: 0; }
+            to { top: calc(100% - 40px); opacity: 0; }
+        }
+
+        @keyframes fadeOutAndShrink {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0; transform: scale(0.5); }
+        }
+
+        #input-area {
+            width: 80%;
+            padding: 15px 25px;
+            font-size: 1.8em;
+            text-align: center;
+            background-color: rgba(0, 100, 200, 0.8);
+            border: 3px solid #0ff;
+            border-radius: 15px;
+            color: #e0f2f7;
+            caret-color: #0ff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.6);
+            outline: none;
+            transition: all 0.2s ease-in-out;
+            margin-bottom: 20px;
+            z-index: 100;
+            ime-mode: inactive; /* IMEを無効に */
+        }
+
+        #input-area:focus {
+            background-color: rgba(0, 120, 240, 0.9);
+            box-shadow: 0 0 30px rgba(0, 255, 255, 1);
+        }
+
+        #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 3em;
+            text-shadow: 0 0 20px #f00;
+            z-index: 200;
+            display: none;
+        }
+
+        #game-over-screen button {
+            margin-top: 30px;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            background-color: #00bcd4;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #game-over-screen button:hover {
+            background-color: #0097a7;
+        }
+
+        /* 惑星の装飾 */
+        .planet {
+            position: absolute;
+            background-color: #3f51b5;
+            border-radius: 50%;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5), 0 0 30px rgba(63, 81, 181, 0.5);
+            z-index: 1;
+            filter: blur(1px);
+        }
+
+        .planet.small { width: 50px; height: 50px; }
+        .planet.medium { width: 100px; height: 100px; }
+        .planet.large { width: 150px; height: 150px; }
+
+        /* 円環 */
+        .ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 2px solid rgba(173, 216, 230, 0.5);
+            z-index: 0;
+            filter: blur(0.5px);
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="score-board">スコア: 0</div>
+        <div id="life-board">ライフ: 3</div>
+        
+        <div id="word-container">
+            </div>
+
+        <input type="text" id="input-area" placeholder="ここに入力してください..." autocomplete="off" autocapitalize="off" spellcheck="false">
+
+        <div id="game-over-screen">
+            <h2>ゲームオーバー</h2>
+            <p>最終スコア: <span id="final-score">0</span></p>
+            <button id="restart-button">もう一度遊ぶ</button>
+        </div>
+    </div>
+
+    <script>
+        const words = [
+            "そら", "ほし", "うちゅう", "すいせい", "かせい", "みらい", "せんせい",
+            "にんげん", "げんき", "たいよう", "ちきゅう", "かいじゅう", "きぼう", 
+            "ゆうじょう", "れんあい", "きらきら", "さよなら", "あさごはん", "おやすみ"
+        ];
+        
+        const wordContainer = document.getElementById('word-container');
+        const inputArea = document.getElementById('input-area');
+        const scoreBoard = document.getElementById('score-board');
+        const lifeBoard = document.getElementById('life-board');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const finalScoreSpan = document.getElementById('final-score');
+        const restartButton = document.getElementById('restart-button');
+
+        let score = 0;
+        let lives = 3;
+        let activeWords = [];
+        let wordFallInterval;
+        let wordGenerationInterval;
+        let gameActive = false;
+        
+        // =========================================================
+        // 宇宙背景のセットアップ
+        // =========================================================
+        function createStar() {
+            const star = document.createElement('div');
+            star.classList.add('star');
+            const size = Math.random() * 3 + 1;
+            star.style.width = `${size}px`;
+            star.style.height = `${size}px`;
+            star.style.left = `${Math.random() * 100}%`;
+            star.style.top = `${Math.random() * 100}%`;
+            star.style.animationDuration = `${Math.random() * 3 + 1}s`;
+            star.style.animationDelay = `${Math.random() * 2}s`;
+            document.getElementById('game-container').appendChild(star);
+        }
+
+        function createPlanet(sizeClass, top, left, zIndex = 1) {
+            const planet = document.createElement('div');
+            planet.classList.add('planet', sizeClass);
+            planet.style.top = `${top}px`;
+            planet.style.left = `${left}px`;
+            planet.style.zIndex = zIndex;
+            document.getElementById('game-container').appendChild(planet);
+        }
+
+        function createRing(size, top, left, zIndex = 0) {
+            const ring = document.createElement('div');
+            ring.classList.add('ring');
+            ring.style.width = `${size}px`;
+            ring.style.height = `${size}px`;
+            ring.style.top = `${top}px`;
+            ring.style.left = `${left}px`;
+            ring.style.zIndex = zIndex;
+            document.getElementById('game-container').appendChild(ring);
+        }
+
+        function setupBackgroundElements() {
+            document.querySelectorAll('.star, .planet, .ring').forEach(el => el.remove());
+            for (let i = 0; i < 100; i++) { createStar(); }
+            
+            // 装飾用の惑星を配置
+            createPlanet('medium', 80, 50, 2);
+            createPlanet('small', 250, 180, 2);
+            createPlanet('large', 350, 600, 2);
+            createRing(180, 365, 585, 1);
+            createPlanet('small', 700, 100, 2);
+        }
+        
+        // =========================================================
+        // ゲームロジック
+        // =========================================================
+
+        /**
+         * 新しい単語のゴミを生成し、画面に追加する
+         */
+        function generateNewWord() {
+            if (!gameActive) return;
+
+            const randomWord = words[Math.floor(Math.random() * words.length)];
+            const wordElement = document.createElement('div');
+            wordElement.classList.add('word');
+            
+            wordElement.innerHTML = randomWord; 
+            
+            // 単語がランダムな位置に出現
+            wordElement.style.left = `${Math.random() * (wordContainer.clientWidth - 100)}px`;
+            
+            // 落下速度はスコアに応じて速くなる
+            const speed = (Math.random() * 5) + 5; 
+            wordElement.style.animationDuration = `${Math.max(2, speed - (score / 300))}s`; // 最低2秒
+
+            const wordObject = {
+                element: wordElement,
+                text: randomWord,
+                typed: '', 
+            };
+
+            wordContainer.appendChild(wordElement);
+            activeWords.push(wordObject);
+        }
+
+        /**
+         * 落下した単語の処理（ライフ減少）
+         */
+        function handleMissedWords() {
+            // 単語が画面下端に到達したかどうかをチェック
+            const missedWords = activeWords.filter(wordObj => {
+                const rect = wordObj.element.getBoundingClientRect();
+                const containerRect = wordContainer.getBoundingClientRect();
+                return rect.top >= containerRect.bottom - 50; 
+            });
+
+            missedWords.forEach(wordObj => {
+                if (gameActive) {
+                    lives--;
+                    lifeBoard.textContent = `ライフ: ${lives}`;
+                    wordObj.element.remove(); 
+                    
+                    if (lives <= 0) {
+                        endGame();
+                    }
+                }
+            });
+
+            // ミスした単語をリストから削除
+            activeWords = activeWords.filter(wordObj => {
+                const rect = wordObj.element.getBoundingClientRect();
+                const containerRect = wordContainer.getBoundingClientRect();
+                return rect.top < containerRect.bottom - 50;
+            });
+        }
+        
+        /**
+         * 入力イベントハンドラ
+         */
+        function handleInput(event) {
+            if (!gameActive) return;
+            
+            let typedText = inputArea.value.trim().toLowerCase();
+
+            // 1. 現在入力中の単語を特定する
+            let currentTargetWord = activeWords.find(wordObj => 
+                wordObj.text.startsWith(typedText)
+            );
+
+            if (currentTargetWord) {
+                // 2. 正しく入力が続いている場合
+                currentTargetWord.typed = typedText;
+                
+                // 画面上の表示を更新（タイプ済みと未タイプで色分け）
+                const remainingText = currentTargetWord.text.substring(typedText.length);
+                const typedHTML = `<span class="typed-char">${typedText}</span>`;
+                currentTargetWord.element.innerHTML = typedHTML + remainingText;
+
+                // 単語を全てタイプし終えたら
+                if (typedText === currentTargetWord.text) {
+                    // 完了処理
+                    currentTargetWord.element.classList.add('hit');
+                    setTimeout(() => currentTargetWord.element.remove(), 300); 
+                    
+                    activeWords = activeWords.filter(w => w !== currentTargetWord);
+                    
+                    score += currentTargetWord.text.length * 10;
+                    scoreBoard.textContent = `スコア: ${score}`;
+                    
+                    // 単語が消えたら入力欄をクリア
+                    inputArea.value = '';
+                }
+            } else {
+                // 3. タイプミス、または別の単語を打ち始めた場合
+                // 入力欄を自動的にリセットする
+                inputArea.value = ''; 
+                
+                // 全ての単語の強調表示をリセット
+                activeWords.forEach(wordObj => wordObj.element.innerHTML = wordObj.text);
+            }
+        }
+
+
+        /**
+         * ゲーム終了処理
+         */
+        function endGame() {
+            gameActive = false;
+            clearInterval(wordGenerationInterval);
+            clearInterval(wordFallInterval);
+            inputArea.removeEventListener('input', handleInput);
+            inputArea.disabled = true;
+
+            finalScoreSpan.textContent = score;
+            gameOverScreen.style.display = 'flex';
+        }
+
+        /**
+         * ゲーム開始/リスタート処理
+         */
+        function startGame() {
+            score = 0;
+            lives = 3;
+            activeWords = [];
+            
+            scoreBoard.textContent = `スコア: ${score}`;
+            lifeBoard.textContent = `ライフ: ${lives}`;
+            inputArea.value = '';
+            inputArea.disabled = false;
+            gameOverScreen.style.display = 'none';
+            wordContainer.innerHTML = '';
+            
+            setupBackgroundElements();
+            
+            // イベントリスナーを再登録
+            inputArea.addEventListener('input', handleInput);
+            inputArea.focus(); 
+            
+            wordGenerationInterval = setInterval(generateNewWord, 2000); 
+            wordFallInterval = setInterval(handleMissedWords, 50); 
+            
+            gameActive = true;
+        }
+
+        // リスタートボタンにイベントを設定
+        restartButton.addEventListener('click', startGame);
+
+        // ページロード時にゲームを開始
+        startGame();
+
+    </script>
+</body>
+</html>
